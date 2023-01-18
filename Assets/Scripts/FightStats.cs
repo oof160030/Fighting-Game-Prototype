@@ -12,7 +12,6 @@ public class FightStats : MonoBehaviour
 
     private float MapEdge, CamRange; //How far from cam center a player can go & how far from stage center the camera can go
     private float ContactLimit = 1.5f;
-    
 
     // Start is called before the first frame update
     void Start()
@@ -38,16 +37,20 @@ public class FightStats : MonoBehaviour
                 SeperatePlayers(P1.transform, P2.transform);
         }
 
-        //If [Camera is operating as normal] and fighter tries to walk off camera, stop them.
-        // Camera should be able to set to not follow the center point (such as by tracking one player)
+        //Tell each fighter to check if they got hit
+        P1F.UpdateDamage(); P2F.UpdateDamage();
+
+        //CAMERA CONTROLS
+        //Lock players within camera bounds
         P1.transform.position = new Vector2(Mathf.Clamp(P1.transform.position.x, Cam.position.x - MapEdge, Cam.position.x + MapEdge), P1.transform.position.y);
         P2.transform.position = new Vector2(Mathf.Clamp(P2.transform.position.x, Cam.position.x - MapEdge, Cam.position.x + MapEdge), P2.transform.position.y);
 
-        //Reposition Camera
+        //Reposition Camera as needed to follow fighters
         float desiredX = (P1.transform.position.x + P2.transform.position.x) / 2.0f;
         Cam.position = new Vector3(Mathf.Clamp(desiredX, -CamRange, CamRange), 0, -10);
     }
 
+    //Called if the fighters are too close - moves them to their minimum allowed distance based on relative position
     private void SeperatePlayers(Transform left, Transform right)
     {
         //If left fighter is close to wall, move only the right one
