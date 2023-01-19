@@ -13,6 +13,8 @@ public class Fighter_Parent : MonoBehaviour
     [SerializeField] private bool OnGround;
 
     public int PlayerPort; //1 or 2
+    private Fighter_Parent OtherPlayer;
+    private FightStats FMGR;
 
     private Rigidbody2D RB2;
     private SpriteRenderer SR;
@@ -28,9 +30,11 @@ public class Fighter_Parent : MonoBehaviour
     [SerializeField] float WalkSpeed, JumpForce, Gravity;
     public float AnimHoriz, AnimVert; //Set by animator - determines movement forwards or upwards.
 
-    public void INIT(int P)
+    public void INIT(int P, Fighter_Parent O)
     {
         PlayerPort = P;
+        OtherPlayer = O;
+        FMGR = GameObject.FindGameObjectWithTag("FightMGR").GetComponent<FightStats>();
         MGR = Game_Manager.GetMGR();
         RB2 = GetComponent<Rigidbody2D>();
         SR = GetComponent<SpriteRenderer>();
@@ -116,6 +120,16 @@ public class Fighter_Parent : MonoBehaviour
             if (OnGround && PI.VertInput() == 1 && PI.VertInputChanged())
                 YVel = JumpForce;
         }
+        //If fighter is being hurt on the ground, reduce horizontal speed through acceleration
+        else if(State == FighterState.FLINCH || State == FighterState.CRUMPLE || State == FighterState.ATTACK)
+        {
+            XVel = Mathf.Clamp((Mathf.Abs(RB2.velocity.x) - 3.9f * Time.deltaTime),0,1200) * Mathf.Sign(RB2.velocity.x);
+        }
+        //If fighter is being hurt in the air, maintain horizontal speed
+        else if (State == FighterState.AIRFLINCH || State == FighterState.TUMBLE)
+        {
+            XVel = RB2.velocity.x;
+        }
         RB2.velocity = new Vector2(XVel, YVel - Gravity * Time.deltaTime);
 
     }
@@ -189,7 +203,11 @@ public class Fighter_Parent : MonoBehaviour
                     State = FighterState.AIRFLINCH;
                     //Tell animator you got hit
                     ANIMCTRL.SetTrigger("Hurt");
+                    //Set knockback based on ground state
+                    RB2.velocity = Enemy_HB.LastHitbox.knockback;
                 }
+                //Set knockback
+                RB2.velocity = SetKnockback(true, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
             }
             else
             {
@@ -201,6 +219,7 @@ public class Fighter_Parent : MonoBehaviour
                     //switch to idle state after time limit
                     ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
                 }
+                //If launcher property, use the air crumple state instead
                 else
                 {
                     State = FighterState.FLINCH;
@@ -209,10 +228,33 @@ public class Fighter_Parent : MonoBehaviour
                     //switch to idle state after time limit
                     ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
                 }
+                //Set knockback
+                if (FMGR.FighterNearEdge(transform))
+                    OtherPlayer.SetPushback(Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
+                else
+                    RB2.velocity = SetKnockback(false, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
+                //BUT, use air knockback if launcher property is true
             }
             //In any case, clear the hitbox system
             Enemy_HB.ClearValues();
         }
+    }
+
+    public Vector3 SetKnockback(bool AirKnockback, bool FR, Vector3 KB)
+    {
+        Vector3 NKB = KB;
+        //If using ground knockback, zero out y value
+        if (!AirKnockback)
+            NKB = new Vector3(NKB.x, 0);
+        if (!FR)
+            NKB = Vector3.Reflect(NKB, Vector3.left);
+        return NKB;
+    }
+
+    public void SetPushback(bool FR, Vector3 KB)
+    {
+        //Since pushback should be opposite, send the opposite FR value
+        RB2.velocity = SetKnockback(false, !FR, KB);
     }
     #endregion
 
@@ -220,7 +262,12 @@ public class Fighter_Parent : MonoBehaviour
     public void ANIM_StartAttack()
     {
         if (State != FighterState.ATTACK)
+        {
             State = FighterState.ATTACK;
+            if (OnGround) //Halt horizontal speed if attacking on the ground
+                RB2.velocity = new Vector2(0, RB2.velocity.y);
+        }
+            
     }
 
     public void ANIM_EndAttack()
@@ -252,6 +299,8 @@ public class Fighter_Parent : MonoBehaviour
         //(If touching the ground, set to grounded)
         if (collision.gameObject.CompareTag("Ground"))
         {
+            if (!OnGround)
+                ANIMCTRL.SetTrigger("Landed");
             OnGround = true;
             ANIMCTRL.SetBool("Grounded", true);
         }
@@ -354,7 +403,8 @@ class AnimControl
             new Anim_TriggerTimer("Block", fighterAR),
             new Anim_TriggerTimer("Hurt", fighterAR),
             new Anim_TriggerTimer("Recover", fighterAR),
-            new Anim_TriggerTimer("Crumple", fighterAR)
+            new Anim_TriggerTimer("Crumple", fighterAR),
+            new Anim_TriggerTimer("Landed", fighterAR)
         };
         RecoveryTimer = 0;
     }

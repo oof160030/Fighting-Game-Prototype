@@ -17,8 +17,9 @@ public class FightStats : MonoBehaviour
     void Start()
     {
         Cam = GameObject.FindGameObjectWithTag("MainCamera").transform;
-        P1 = Instantiate(playerProto); P1F = P1.GetComponent<Fighter_Parent>(); P1F.INIT(1);
-        P2 = Instantiate(playerProto); P2F = P2.GetComponent<Fighter_Parent>(); P2F.INIT(2);
+        P1 = Instantiate(playerProto); P1F = P1.GetComponent<Fighter_Parent>();
+        P2 = Instantiate(playerProto); P2F = P2.GetComponent<Fighter_Parent>();
+        P1F.INIT(1, P2F); P2F.INIT(2,P1F);
         MapEdge = 8.5f; CamRange = 4.5f;
     }
 
@@ -68,5 +69,10 @@ public class FightStats : MonoBehaviour
             left.position = new Vector2(mid - ContactLimit/2.0f, left.position.y);
             right.position = new Vector2(mid + ContactLimit/2.0f, right.position.y);
         }
+    }
+
+    public bool FighterNearEdge(Transform T)
+    {
+        return (Mathf.Abs(Cam.position.x - T.position.x) > MapEdge - 0.05f);
     }
 }
