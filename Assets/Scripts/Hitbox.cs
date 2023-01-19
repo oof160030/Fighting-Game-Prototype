@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public enum HBox_Height { LOW, MID, HIGH };
+public enum Properties { CRUMPLE };
 public class Hitbox : MonoBehaviour
 {
     private SO_Hitbox HB_Data;

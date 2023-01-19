@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum FighterState { IDLE, ATTACK, BLOCK, HURT, PRONE, ANIMATED};
+public enum FighterState { IDLE, ATTACK, BLOCK, FLINCH, AIRFLINCH, CRUMPLE, TUMBLE, PRONE, ANIMATED};
 public class Fighter_Parent : MonoBehaviour
 {
     private Game_Manager MGR;
@@ -65,13 +65,23 @@ public class Fighter_Parent : MonoBehaviour
             UpdateFacing();
 
         ANIMCTRL.UpdateTimers();
-        if (ANIMCTRL.UpdateRecoveryTimer())
-            State = FighterState.IDLE;
+        if(State != FighterState.IDLE)
+        {
+            UpdateRecovery();
+        }
+        
         //Check if an attack is being used
         UpdateAttack();
         
         //Set Movement
         UpdateMovement();
+    }
+
+    //Knock prone
+    public void LandProne()
+    {
+        State = FighterState.PRONE;
+        ANIMCTRL.SetRecoveryTrigger(20);
     }
 
     #region //Update methods [UpdatePosition; UpdateFacing; UpdateMovement; UpdateAttack]
@@ -117,7 +127,28 @@ public class Fighter_Parent : MonoBehaviour
         {
             ANIMCTRL.SetTrigger("A");
         }
+        else if(PI.B.JustPressed() && State == FighterState.IDLE) //Update later to include input buffer
+        {
+            ANIMCTRL.SetTrigger("B");
+        }
         //(The animator will change state, spawn hitboxes or move the player until damage is received or the move ends)
+    }
+
+    private void UpdateRecovery()
+    {
+        //If in an air damage state, return to neutral or land prone once you touch the ground
+        if (State == FighterState.AIRFLINCH && OnGround)
+            State = FighterState.IDLE;
+        else if (State == FighterState.TUMBLE && OnGround)
+            LandProne();
+        //If in a ground damage state, return to neutral or fall prone once hitstun elapses
+        else if (ANIMCTRL.UpdateRecoveryTimer()) //If this returns true, the fighter has just recovered from hitstun
+        {
+            if (State == FighterState.CRUMPLE)
+                LandProne();
+            else
+                State = FighterState.IDLE;
+        }
     }
     #endregion
 
@@ -144,17 +175,41 @@ public class Fighter_Parent : MonoBehaviour
                 ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.blockStun);
             }
             //If you were otherwise invulnerable, play an effect [IGNORE FOR NOW]
-            //If neither apply, enter damaged state
+            //If hit hard on the ground, fall to the floor
+            else if(!OnGround)
+            {
+                if (Enemy_HB.HasProperty(Properties.CRUMPLE))
+                {
+                    State = FighterState.TUMBLE;
+                    //Tell animator you got hit
+                    ANIMCTRL.SetTrigger("Crumple");
+                }
+                else
+                {
+                    State = FighterState.AIRFLINCH;
+                    //Tell animator you got hit
+                    ANIMCTRL.SetTrigger("Hurt");
+                }
+            }
             else
             {
-                State = FighterState.HURT;
-                //Tell animator you got hit
-                ANIMCTRL.SetTrigger("Hurt");
-                //switch to idle state after time limit
-                ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
-                Debug.Log("Hit");
+                if(Enemy_HB.HasProperty(Properties.CRUMPLE))
+                {
+                    State = FighterState.CRUMPLE;
+                    //Tell animator you got hit
+                    ANIMCTRL.SetTrigger("Crumple");
+                    //switch to idle state after time limit
+                    ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                }
+                else
+                {
+                    State = FighterState.FLINCH;
+                    //Tell animator you got hit
+                    ANIMCTRL.SetTrigger("Hurt");
+                    //switch to idle state after time limit
+                    ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                }
             }
-
             //In any case, clear the hitbox system
             Enemy_HB.ClearValues();
         }
@@ -264,6 +319,21 @@ class EnemyHitbox_Data
         lastHitbox = null;
         facingRight = true;
     }
+
+    public bool HasProperty(Properties XX)
+    {
+        if (lastHitbox.Effects.Length == 0)
+            return false;
+        else
+        {
+            foreach (Properties P in lastHitbox.Effects)
+            {
+                if (P == XX)
+                    return true;
+            }
+        }
+        return false;
+    }
 }
 #endregion
 
@@ -283,7 +353,8 @@ class AnimControl
             new Anim_TriggerTimer("C", fighterAR),
             new Anim_TriggerTimer("Block", fighterAR),
             new Anim_TriggerTimer("Hurt", fighterAR),
-            new Anim_TriggerTimer("Recover", fighterAR)
+            new Anim_TriggerTimer("Recover", fighterAR),
+            new Anim_TriggerTimer("Crumple", fighterAR)
         };
         RecoveryTimer = 0;
     }

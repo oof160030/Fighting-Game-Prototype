@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd04ab8bb7357d4892c8ecfa23ea69e, type: 3}
-  m_Name: 0001_StandLight
+  m_Name: 0000_StandLight
   m_EditorClassIdentifier: 
   Move_IDNum: 0
   Hitbox_IDNum: 0
