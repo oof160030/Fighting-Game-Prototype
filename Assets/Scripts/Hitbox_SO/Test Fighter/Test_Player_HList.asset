@@ -15,4 +15,8 @@ MonoBehaviour:
   CharacterID: 0
   Hitbox:
   - {fileID: 11400000, guid: ba83f77b7637653459f3bf386a9caa1d, type: 2}
+  - {fileID: 11400000, guid: 8a2c8d6b5942b0e42b5dd83092e0933f, type: 2}
+  - {fileID: 11400000, guid: 3bec8cec67734734fb6911c18276b77c, type: 2}
   - {fileID: 11400000, guid: 8bf351345b96c2f4a8c55436c5448c90, type: 2}
+  - {fileID: 11400000, guid: 5284fc837ba4e7348a1c7cd6abce5fe3, type: 2}
+  - {fileID: 11400000, guid: 06061890d4865de4f867674624ea1a72, type: 2}

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class FightStats : MonoBehaviour
 {
@@ -9,6 +10,7 @@ public class FightStats : MonoBehaviour
     private GameObject P1, P2;
     private Fighter_Parent P1F, P2F;
     public Transform Cam;
+    public TextMeshProUGUI Healthp1, Healthp2;
 
     private float MapEdge, CamRange; //How far from cam center a player can go & how far from stage center the camera can go
     private float ContactLimit = 1.5f;
@@ -19,7 +21,7 @@ public class FightStats : MonoBehaviour
         Cam = GameObject.FindGameObjectWithTag("MainCamera").transform;
         P1 = Instantiate(playerProto); P1F = P1.GetComponent<Fighter_Parent>();
         P2 = Instantiate(playerProto); P2F = P2.GetComponent<Fighter_Parent>();
-        P1F.INIT(1, P2F); P2F.INIT(2,P1F);
+        P1F.INIT(1, P2F, Healthp1); P2F.INIT(2,P1F, Healthp2);
         MapEdge = 8.5f; CamRange = 4.5f;
     }
 

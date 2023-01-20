@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd04ab8bb7357d4892c8ecfa23ea69e, type: 3}
-  m_Name: 0300_StandHeavy
+  m_Name: 0400_CrouchHeavy
   m_EditorClassIdentifier: 
-  Move_IDNum: 3
+  Move_IDNum: 4
   Hitbox_IDNum: 0
-  position: {x: 2.5, y: 2.1, z: 0}
-  size: {x: 1.15, y: 1.3, z: 0}
+  position: {x: 1.7, y: 0.8, z: 0}
+  size: {x: 1.45, y: 0.9, z: 0}
   damage: 8
-  lifespan: 5
+  lifespan: 2
   priority: 0
-  knockback: {x: 10, y: 10, z: 0}
+  knockback: {x: 3, y: -6, z: 0}
   hitStop: 0
-  hitStun: 15
-  blockStun: 15
-  HB_HighLow: 0
-  Effects: 0100000000000000
+  hitStun: 10
+  blockStun: 10
+  HB_HighLow: 1
+  Effects: 

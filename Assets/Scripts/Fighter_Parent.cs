@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public enum FighterState { IDLE, ATTACK, BLOCK, FLINCH, AIRFLINCH, CRUMPLE, TUMBLE, PRONE, ANIMATED};
 public class Fighter_Parent : MonoBehaviour
@@ -11,6 +12,7 @@ public class Fighter_Parent : MonoBehaviour
     private bool facing_Right; //Indicates which direction the fighter is currently facing.
     private bool on_Right; //Indicates which side the fighter is currently on relative to the opponent.
     [SerializeField] private bool OnGround;
+    private bool Landed;
 
     public int PlayerPort; //1 or 2
     private Fighter_Parent OtherPlayer;
@@ -21,6 +23,12 @@ public class Fighter_Parent : MonoBehaviour
     private AnimControl ANIMCTRL;
     private Player_Input PI;
     public GameObject HBox_Prefab;
+    private Hurtbox MyHurtbox;
+
+    //Uiversal Stats
+    public int maxHealth;
+    private int health;
+    private TextMeshProUGUI HP_Disp;
 
     //Character specific fields (serializable)
     [SerializeField] SO_HitboxList MoveList;
@@ -30,19 +38,25 @@ public class Fighter_Parent : MonoBehaviour
     [SerializeField] float WalkSpeed, JumpForce, Gravity;
     public float AnimHoriz, AnimVert; //Set by animator - determines movement forwards or upwards.
 
-    public void INIT(int P, Fighter_Parent O)
+    public void INIT(int P, Fighter_Parent O, TextMeshProUGUI GU)
     {
         PlayerPort = P;
         OtherPlayer = O;
         FMGR = GameObject.FindGameObjectWithTag("FightMGR").GetComponent<FightStats>();
         MGR = Game_Manager.GetMGR();
+        HP_Disp = GU;
         RB2 = GetComponent<Rigidbody2D>();
         SR = GetComponent<SpriteRenderer>();
         ANIMCTRL = new AnimControl();
         ANIMCTRL.Init(GetComponent<Animator>());
+        MyHurtbox = GetComponentInChildren<Hurtbox>();
         State = FighterState.IDLE;
 
         Enemy_HB = new EnemyHitbox_Data();
+        health = maxHealth;
+        HP_Disp.text = "P" + PlayerPort + ": " + health + "hp";
+        MyHurtbox.SetActive(true);
+
 
         PI = new Player_Input(); PI.INIT();
         if (PlayerPort == 1)
@@ -79,13 +93,20 @@ public class Fighter_Parent : MonoBehaviour
         
         //Set Movement
         UpdateMovement();
+
+        UpdateAnimator();
+
+        if(Landed) Landed = false;
     }
 
     //Knock prone
     public void LandProne()
     {
         State = FighterState.PRONE;
-        ANIMCTRL.SetRecoveryTrigger(20);
+        MyHurtbox.SetActive(false);
+        if (health > 0)
+            ANIMCTRL.SetRecoveryTrigger(20);
+        Debug.Log("Prone");
     }
 
     #region //Update methods [UpdatePosition; UpdateFacing; UpdateMovement; UpdateAttack]
@@ -102,6 +123,7 @@ public class Fighter_Parent : MonoBehaviour
     {
         facing_Right = !on_Right;
         SR.flipX = !facing_Right;
+        MyHurtbox.Flip(!facing_Right);
     }
 
     private void UpdateMovement()
@@ -111,15 +133,24 @@ public class Fighter_Parent : MonoBehaviour
         float YVel = RB2.velocity.y;
         if (State == FighterState.IDLE)
         {
+            if(!OnGround)
             XVel = RB2.velocity.x;
             //Set X Input
-            if (OnGround)
+            else if (PI.VertInput() > -1)
                 XVel = WalkSpeed * PI.HorizInput();
+            else
+                XVel = 0;
 
             //Set Y Input (Jump)
             if (OnGround && PI.VertInput() == 1 && PI.VertInputChanged())
+            {
                 YVel = JumpForce;
+                ANIMCTRL.SetTrigger("Jump");
+            }
+                
         }
+        else if (State == FighterState.BLOCK)
+            XVel = RB2.velocity.x;
         //If fighter is being hurt on the ground, reduce horizontal speed through acceleration
         else if(State == FighterState.FLINCH || State == FighterState.CRUMPLE || State == FighterState.ATTACK)
         {
@@ -151,9 +182,9 @@ public class Fighter_Parent : MonoBehaviour
     private void UpdateRecovery()
     {
         //If in an air damage state, return to neutral or land prone once you touch the ground
-        if (State == FighterState.AIRFLINCH && OnGround)
+        if (State == FighterState.AIRFLINCH && Landed)
             State = FighterState.IDLE;
-        else if (State == FighterState.TUMBLE && OnGround)
+        else if (State == FighterState.TUMBLE && Landed)
             LandProne();
         //If in a ground damage state, return to neutral or fall prone once hitstun elapses
         else if (ANIMCTRL.UpdateRecoveryTimer()) //If this returns true, the fighter has just recovered from hitstun
@@ -161,8 +192,20 @@ public class Fighter_Parent : MonoBehaviour
             if (State == FighterState.CRUMPLE)
                 LandProne();
             else
+            {
                 State = FighterState.IDLE;
+                MyHurtbox.SetActive(true);
+            }  
         }
+        else if (State == FighterState.ATTACK && Landed)
+            State = FighterState.IDLE;
+    }
+
+    private void UpdateAnimator()
+    {
+        //Set horiz and vert inputs, relative to facing
+        ANIMCTRL.SetInt("X_Input", facing_Right ? PI.HorizInput() : -PI.HorizInput());
+        ANIMCTRL.SetInt("Y_Input", PI.VertInput());
     }
     #endregion
 
@@ -178,63 +221,102 @@ public class Fighter_Parent : MonoBehaviour
         if(Enemy_HB.LastHitbox != null)
         {
             //In any case, apply hitstop
-            
+            //Check if the fighter was on the ground holding back
+            bool Blocking = false;
+            if (State == FighterState.IDLE && OnGround && PI.HoldingBack(facing_Right))
+            {
+                //If yes, check if the attack was a mid
+                if (Enemy_HB.LastHitbox.HB_HighLow == HBox_Height.MID)
+                    Blocking = true;
+                else if(Enemy_HB.LastHitbox.HB_HighLow == HBox_Height.HIGH && PI.VertInput() > -1)
+                    Blocking = true;
+                else if (Enemy_HB.LastHitbox.HB_HighLow == HBox_Height.LOW && PI.VertInput() < 0)
+                    Blocking = true;
+            }
             //If you were blocking (holding back on the ground in idle state), enter a block state
-            if(State == FighterState.IDLE && OnGround && PI.HoldingBack(facing_Right))
+            if (Blocking)
             {
                 State = FighterState.BLOCK;
                 //Tell animator you blocked
                 ANIMCTRL.SetTrigger("Block");
                 //switch to idle state after time limit
                 ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.blockStun);
+
+                //Pushback the player if hit near edge
+                if (FMGR.FighterNearEdge(transform))
+                    OtherPlayer.SetPushback(Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
+                //If no launcher, don't use air knockback
+                else
+                    RB2.velocity = SetKnockback(false, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
             }
             //If you were otherwise invulnerable, play an effect [IGNORE FOR NOW]
             //If hit hard on the ground, fall to the floor
-            else if(!OnGround)
-            {
-                if (Enemy_HB.HasProperty(Properties.CRUMPLE))
-                {
-                    State = FighterState.TUMBLE;
-                    //Tell animator you got hit
-                    ANIMCTRL.SetTrigger("Crumple");
-                }
-                else
-                {
-                    State = FighterState.AIRFLINCH;
-                    //Tell animator you got hit
-                    ANIMCTRL.SetTrigger("Hurt");
-                    //Set knockback based on ground state
-                    RB2.velocity = Enemy_HB.LastHitbox.knockback;
-                }
-                //Set knockback
-                RB2.velocity = SetKnockback(true, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
-            }
             else
             {
-                if(Enemy_HB.HasProperty(Properties.CRUMPLE))
+                health = Mathf.Clamp(health - Enemy_HB.LastHitbox.damage, 0, maxHealth);
+                HP_Disp.text = "P" + PlayerPort + ": " + health + "hp";
+
+                if (!OnGround)
                 {
-                    State = FighterState.CRUMPLE;
-                    //Tell animator you got hit
-                    ANIMCTRL.SetTrigger("Crumple");
-                    //switch to idle state after time limit
-                    ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                    if (Enemy_HB.HasProperty(Properties.CRUMPLE) || health == 0)
+                    {
+                        State = FighterState.TUMBLE;
+                        //Tell animator you got hit
+                        ANIMCTRL.SetTrigger("Crumple");
+                    }
+                    else
+                    {
+                        State = FighterState.AIRFLINCH;
+                        //Tell animator you got hit
+                        ANIMCTRL.SetTrigger("Hurt");
+                        //Set knockback based on ground state
+                        RB2.velocity = Enemy_HB.LastHitbox.knockback;
+                    }
+                    //Set knockback
+                    RB2.velocity = SetKnockback(true, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
                 }
-                //If launcher property, use the air crumple state instead
                 else
                 {
-                    State = FighterState.FLINCH;
-                    //Tell animator you got hit
-                    ANIMCTRL.SetTrigger("Hurt");
-                    //switch to idle state after time limit
-                    ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                    if (Enemy_HB.HasProperty(Properties.LAUNCH))
+                    {
+                        State = FighterState.TUMBLE;
+                        //Tell animator you got hit
+                        ANIMCTRL.SetTrigger("Launch");
+                    }
+                    else if (Enemy_HB.HasProperty(Properties.CRUMPLE) || health == 0)
+                    {
+                        State = FighterState.CRUMPLE;
+                        //Tell animator you got hit
+                        ANIMCTRL.SetTrigger("Crumple");
+                        //switch to idle state after time limit
+                        if (health == 0)
+                            ANIMCTRL.SetRecoveryTrigger(Mathf.Max(Enemy_HB.LastHitbox.hitStun, 20));
+                        else
+                            ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                    }
+                    //If launcher property, use the air crumple state instead
+                    else
+                    {
+                        State = FighterState.FLINCH;
+                        //Tell animator you got hit
+                        ANIMCTRL.SetTrigger("Hurt");
+                        //switch to idle state after time limit
+                        ANIMCTRL.SetRecoveryTrigger(Enemy_HB.LastHitbox.hitStun);
+                    }
+                    //KNOCKBACK
+                    //Pushback the player if hit near edge
+                    if (FMGR.FighterNearEdge(transform))
+                        OtherPlayer.SetPushback(Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
+                    //BUT, use air knockback if launcher property is true
+                    if (Enemy_HB.HasProperty(Properties.LAUNCH))
+                        RB2.velocity = SetKnockback(true, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
+                    //If no launcher, don't use air knockback
+                    else
+                        RB2.velocity = SetKnockback(false, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
                 }
-                //Set knockback
-                if (FMGR.FighterNearEdge(transform))
-                    OtherPlayer.SetPushback(Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
-                else
-                    RB2.velocity = SetKnockback(false, Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
-                //BUT, use air knockback if launcher property is true
             }
+            //Apply damage if not blocked
+            
             //In any case, clear the hitbox system
             Enemy_HB.ClearValues();
         }
@@ -300,7 +382,10 @@ public class Fighter_Parent : MonoBehaviour
         if (collision.gameObject.CompareTag("Ground"))
         {
             if (!OnGround)
+            {
+                Landed = true;
                 ANIMCTRL.SetTrigger("Landed");
+            } 
             OnGround = true;
             ANIMCTRL.SetBool("Grounded", true);
         }
@@ -404,7 +489,9 @@ class AnimControl
             new Anim_TriggerTimer("Hurt", fighterAR),
             new Anim_TriggerTimer("Recover", fighterAR),
             new Anim_TriggerTimer("Crumple", fighterAR),
-            new Anim_TriggerTimer("Landed", fighterAR)
+            new Anim_TriggerTimer("Landed", fighterAR),
+            new Anim_TriggerTimer("Launch", fighterAR),
+            new Anim_TriggerTimer("Jump", fighterAR)
         };
         RecoveryTimer = 0;
     }
@@ -445,6 +532,16 @@ class AnimControl
     public void SetBool(string name, bool value)
     {
         AR.SetBool(name, value);
+    }
+
+    public void SetInt(string name, int value)
+    {
+        AR.SetInteger(name, value);
+    }
+
+    public void SetFloat(string name, float value)
+    {
+        AR.SetFloat(name, value);
     }
 
     public void SetRecoveryTrigger(int X)
