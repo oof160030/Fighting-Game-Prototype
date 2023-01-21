@@ -13,6 +13,7 @@ public class Fighter_Parent : MonoBehaviour
     private bool on_Right; //Indicates which side the fighter is currently on relative to the opponent.
     [SerializeField] private bool OnGround;
     private bool Landed;
+    private bool ControlsOn;
 
     public int PlayerPort; //1 or 2
     private Fighter_Parent OtherPlayer;
@@ -27,7 +28,7 @@ public class Fighter_Parent : MonoBehaviour
 
     //Uiversal Stats
     public int maxHealth;
-    private int health;
+    private int health; public int Health { get { return health; } }
     private TextMeshProUGUI HP_Disp;
 
     //Character specific fields (serializable)
@@ -73,11 +74,29 @@ public class Fighter_Parent : MonoBehaviour
 
     }
 
+    public void ResetFighter()
+    {
+        health = maxHealth;
+        HP_Disp.text = "P" + PlayerPort + ": " + health + "hp";
+        MyHurtbox.SetActive(true);
+        State = FighterState.IDLE;
+        ANIMCTRL.SetTrigger("RESET");
+        if (PlayerPort == 1)
+        {
+            transform.position = new Vector2(-5.25f, -4);
+        }
+        else
+        {
+            transform.position = new Vector2(5.25f, -4);
+        }
+    }
+
     // Update is called once per frame
     void Update()
     {
         //Get Inputs
-        PI.UpdateButtons();
+        if(ControlsOn)
+            PI.UpdateButtons();
 
         if(OnGround)
             UpdateFacing();
@@ -90,13 +109,21 @@ public class Fighter_Parent : MonoBehaviour
         
         //Check if an attack is being used
         UpdateAttack();
-        
         //Set Movement
         UpdateMovement();
 
         UpdateAnimator();
 
         if(Landed) Landed = false;
+    }
+
+    public void SetControlsActive(bool active)
+    {
+        ControlsOn = active;
+        if(!active)
+        {
+            PI.ResetButtons();
+        }
     }
 
     //Knock prone
@@ -491,7 +518,9 @@ class AnimControl
             new Anim_TriggerTimer("Crumple", fighterAR),
             new Anim_TriggerTimer("Landed", fighterAR),
             new Anim_TriggerTimer("Launch", fighterAR),
-            new Anim_TriggerTimer("Jump", fighterAR)
+            new Anim_TriggerTimer("Jump", fighterAR),
+            new Anim_TriggerTimer("RESET", fighterAR)
+
         };
         RecoveryTimer = 0;
     }
@@ -621,6 +650,7 @@ class Anim_TriggerTimer
 class Player_Input
 {
     public Button Up, Down, Left, Right, A, B, C;
+    private Button[] AllButtons;
 
     public void INIT()
     {
@@ -631,6 +661,7 @@ class Player_Input
         A = new Button();
         B = new Button();
         C = new Button();
+        AllButtons = new Button[] { Up, Down, Left, Right, A, B, C };
     }
     public void AssignInputs(KeyCode Uk, KeyCode Dk, KeyCode Lk, KeyCode Rk, KeyCode Ak, KeyCode Bk, KeyCode Ck)
     {
@@ -645,6 +676,11 @@ class Player_Input
 
     public void UpdateButtons()
     {
+        foreach(Button X in AllButtons)
+        {
+            X.UpdateState();
+        }
+        /*
         Up.UpdateState();
         Down.UpdateState();
         Left.UpdateState();
@@ -652,6 +688,7 @@ class Player_Input
         A.UpdateState();
         B.UpdateState();
         C.UpdateState();
+        */
     }
 
     public int HorizInput()
@@ -675,6 +712,14 @@ class Player_Input
             return HorizInput() == -1;
         else
             return HorizInput() == 1;
+    }
+
+    public void ResetButtons()
+    {
+        foreach (Button X in AllButtons)
+        {
+            X.ResetButton();
+        }
     }
 }
 
@@ -733,6 +778,13 @@ class Button
     public float TimePressed()
     {
         return StateDuration;
+    }
+
+    public void ResetButton()
+    {
+        StateDuration = 0;
+        IsPressed = false;
+        StateChanged = false;
     }
 
 }

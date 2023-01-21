@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 public class Game_Manager : MonoBehaviour
 {
-    static Game_Manager GMG;
+    static Game_Manager GMG; public static Game_Manager ThisGMG { get { return GMG; } }
     bool inGameplay = false;
     FightStats FightMGR;
 
@@ -26,11 +26,18 @@ public class Game_Manager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        /*
         if(Input.GetKeyDown(KeyCode.Space) && !inGameplay)
         {
             SceneManager.LoadScene("Battle Scene");
             inGameplay = true;
         }
+        */
+    }
+
+    public void ResetRoom()
+    {
+        SceneManager.LoadScene("Battle Scene");
     }
 
     static public Game_Manager GetMGR() { return GMG; }
