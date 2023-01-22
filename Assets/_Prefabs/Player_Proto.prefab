@@ -260,16 +260,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 588e7f449663f0b4ba16f9adbec34bff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  OnGround: 0
-  PlayerPort: 0
   HBox_Prefab: {fileID: 2798240728832702496, guid: 8237a247ab8042d4db0d8fc5fae08285, type: 3}
+  playerPort: 0
+  currentState: 0
+  onGround: 0
   maxHealth: 20
-  MoveList: {fileID: 11400000, guid: 63189eca149aaf04e9c8a67c8c58222a, type: 2}
-  WalkSpeed: 5
-  JumpForce: 18
-  Gravity: 40
-  AnimHoriz: 0
-  AnimVert: 0
+  moveList: {fileID: 11400000, guid: 63189eca149aaf04e9c8a67c8c58222a, type: 2}
+  walkSpeed: 5
+  jumpForce: 18
+  gravityForce: 40
+  animHoriz: 0
+  animVert: 0
 --- !u!95 &6702480289788193851
 Animator:
   serializedVersion: 5

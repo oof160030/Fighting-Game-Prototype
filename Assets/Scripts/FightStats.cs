@@ -51,12 +51,18 @@ public class FightStats : MonoBehaviour
         float desiredX = (P1.transform.position.x + P2.transform.position.x) / 2.0f;
         Cam.position = new Vector3(Mathf.Clamp(desiredX, -CamRange, CamRange), 0, -10);
 
+        UpdateState();
+        
+    }
+
+    public void UpdateState()
+    {
         //Update Round State
         GeneralTimer.UpdateTimer();
         switch (RState)
         {
             case RoundState.ROUND_START:
-                if(GeneralTimer.CheckTimer())
+                if (GeneralTimer.TimeJustExpired)
                 {
                     GeneralTimer.SetTimer(1); //Duration of FIGHT text
                     MainText.text = "FIGHT!!!";
@@ -65,7 +71,7 @@ public class FightStats : MonoBehaviour
                 }
                 break;
             case RoundState.GAMEPLAY:
-                if (GeneralTimer.CheckTimer())
+                if (GeneralTimer.TimeJustExpired)
                     MainText.text = "";
                 if (P1F.Health == 0 || P2F.Health == 0)
                 {
@@ -92,7 +98,7 @@ public class FightStats : MonoBehaviour
                 }
                 break;
             case RoundState.ROUND_END:
-                if (GeneralTimer.CheckTimer()) //At time elapse, check if game is over
+                if (GeneralTimer.TimeJustExpired) //At time elapse, check if game is over
                 {
                     if (P1Wins == 2 || P2Wins == 2)
                     {
@@ -112,9 +118,17 @@ public class FightStats : MonoBehaviour
                 }
                 break;
             case RoundState.GAME_END:
-                if(Input.GetKeyDown(KeyCode.Space))
+                if (Input.GetKeyDown(KeyCode.Space))
                 {
-                    GM.ResetRoom();
+                    //Reset Both players
+                    P1F.ResetFighter(); P2F.ResetFighter();
+                    //Reset Round counts
+                    RoundNum = 1; P1Wins = 0; P2Wins = 0;
+                    P1RoundDisp.text = "Rounds: " + P1Wins; P2RoundDisp.text = "Rounds: " + P2Wins;
+                    
+                    RState = RoundState.ROUND_START;
+                    GeneralTimer = new Timer(3);
+                    MainText.text = "ROUND " + RoundNum;
                 }
                 break;
         }
@@ -126,9 +140,9 @@ public class FightStats : MonoBehaviour
         P1F.UpdatePosition(P2.transform); P2F.UpdatePosition(P1.transform);
 
         //if the fighters are close, seperate them
-        if (P1F.IsOnGround() && P2F.IsOnGround() && Mathf.Abs(P1.transform.position.x - P2.transform.position.x) < ContactLimit)
+        if (P1F.OnGround && P2F.OnGround && Mathf.Abs(P1.transform.position.x - P2.transform.position.x) < ContactLimit)
         {
-            if (P1F.IsOnRight())
+            if (P1F.IsOnRight)
                 SeperatePlayers(P2.transform, P1.transform);
             else
                 SeperatePlayers(P1.transform, P2.transform);
@@ -169,45 +183,50 @@ public class FightStats : MonoBehaviour
     }
 }
 
+/// <summary>
+/// A general use timer. Once set, it runs for that amount of seconds and indicates that it expired with a bool.
+/// </summary>
 public class Timer
 {
-    private float CurrentTime;
-    private bool TimeExpired;
+    private float currentTime; public float CurrentTime { get { return currentTime; } }
+    private bool timeJustExpired; public bool TimeJustExpired { get { return timeJustExpired; } }
 
     public Timer()
     {
-        CurrentTime = 0;
-        TimeExpired = false;
+        currentTime = 0;
+        timeJustExpired = false;
     }
 
     public Timer(float X)
     {
-        CurrentTime = X;
-        TimeExpired = false;
+        currentTime = X;
+        timeJustExpired = false;
     }
 
+    /// <summary>
+    /// Updates the timer's current value. Also sets if the timer just expired.
+    /// </summary>
     public void UpdateTimer()
     {
-        if (CurrentTime == 0 && TimeExpired)
-            TimeExpired = false;
+        if (currentTime == 0 && timeJustExpired)
+            timeJustExpired = false;
 
-        if(CurrentTime > 0)
+        else if(currentTime > 0)
         {
-            CurrentTime = Mathf.Clamp(CurrentTime - Time.deltaTime, 0, 200);
-            if (CurrentTime == 0)
-                TimeExpired = true;
+            currentTime = Mathf.Clamp(currentTime - Time.deltaTime, 0, 200);
+            if (currentTime == 0)
+                timeJustExpired = true;
         }
     }
 
-    public bool CheckTimer()
-    {
-        return TimeExpired;
-    }
-
+    /// <summary>
+    /// Sets the timer to run for a certain amount of time.
+    /// </summary>
+    /// <param name="time">The time, in seconds, the timer should run for.</param>
     public void SetTimer(float time)
     {
-        CurrentTime = time;
-        TimeExpired = false;
+        currentTime = time;
+        timeJustExpired = false;
     }
 
 }

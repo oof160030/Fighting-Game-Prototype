@@ -14,11 +14,10 @@ public class Hurtbox : MonoBehaviour
         if(collision.gameObject.CompareTag("Hitbox"))
         {
             Hitbox H = collision.GetComponent<Hitbox>();
-            if(H.ownerID != FP.PlayerPort)
+            if(H.OwnerID != FP.playerPort)
             {
-                FP.PlayerHit(H.hb_Data, H.FacingRight, H.ownerID);
+                FP.PlayerHit(H.HB_Data, H.FacingRight, H.OwnerID);
                 H.Contact();
-                Debug.Log("contact");
             }
         }
     }

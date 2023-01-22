@@ -3,27 +3,27 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public enum HBox_Height { MID, LOW, HIGH };
-public enum Properties { CRUMPLE, LAUNCH };
+public enum Property { CRUMPLE, LAUNCH };
 public class Hitbox : MonoBehaviour
 {
-    private SO_Hitbox HB_Data;
-    private bool facingRight;
-    private int OwnerID;
+    private SO_Hitbox hb_data; public SO_Hitbox HB_Data { get { return hb_data; } }
+    private bool facingRight; public bool FacingRight { get { return facingRight; } }
+    private int ownerID; public int OwnerID { get { return ownerID; } }
     private Fighter_Parent Owner;
     
     public void INIT(SO_Hitbox data, Fighter_Parent O, bool right)
     {
-        HB_Data = data;
+        hb_data = data;
         Owner = O;
-        OwnerID = O.PlayerPort;
+        ownerID = O.playerPort;
         facingRight = right;
 
         //Set size and position
-        transform.localScale = HB_Data.size;
-        transform.localPosition = facingRight ? HB_Data.position : Vector3.Reflect(HB_Data.position, Vector3.left);
+        transform.localScale = hb_data.size;
+        transform.localPosition = facingRight ? hb_data.position : Vector3.Reflect(hb_data.position, Vector3.left);
 
         //Destroy the hitbox after the lifespan elapses
-        Destroy(gameObject, HB_Data.lifespan / 60.0f);
+        Destroy(gameObject, hb_data.lifespan / 60.0f);
     }
 
     //Triggered by the hurtbox after this hitbox comes in contact with it
@@ -31,9 +31,4 @@ public class Hitbox : MonoBehaviour
     {
         Destroy(gameObject);
     }
-
-    //GET methods for the hitbox data - retrieved by the hurtbox on contact
-    public SO_Hitbox hb_Data { get { return HB_Data; } }
-    public bool FacingRight { get { return facingRight; } }
-    public int ownerID { get { return OwnerID; } }
 }

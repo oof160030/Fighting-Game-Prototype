@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 public class Game_Manager : MonoBehaviour
 {
     static Game_Manager GMG; public static Game_Manager ThisGMG { get { return GMG; } }
-    bool inGameplay = false;
+    //bool inGameplay = false;
     FightStats FightMGR;
 
     public GameObject player;
