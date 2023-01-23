@@ -14,8 +14,8 @@ public class FightStats : MonoBehaviour
     public Transform Cam;
     public TextMeshProUGUI Healthp1, Healthp2, P1RoundDisp, P2RoundDisp, MainText;
 
-    private float MapEdge, CamRange; //How far from cam center a player can go & how far from stage center the camera can go
-    private float ContactLimit = 1.5f;
+    private float mapEdge, camRange; // Defines the maximum distance the player and camera can move from camera and stage center respectively
+    private float contactLimit = 1.5f; // Defines how close fighters can get before being seperated. May have to redefine based on player size.
 
     // Round management?
     private int P1Wins, P2Wins, RoundNum;
@@ -31,7 +31,7 @@ public class FightStats : MonoBehaviour
         P2 = Instantiate(playerProto); P2F = P2.GetComponent<Fighter_Parent>();
         P1F.INIT(1, P2F, Healthp1); P2F.INIT(2,P1F, Healthp2);
         
-        MapEdge = 8.5f; CamRange = 4.5f;
+        mapEdge = 8.5f; camRange = 4.5f;
 
         P1Wins = 0; P2Wins = 0; RoundNum = 1;
         P1RoundDisp.text = "Rounds: 0"; P2RoundDisp.text = "Rounds: 0";
@@ -45,16 +45,21 @@ public class FightStats : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        //Resolve fighter positions and damage
         UpdatePlayers();
 
-        //Update Camera
+        //Update Camera position - may move to seperate camera script eventually?
         float desiredX = (P1.transform.position.x + P2.transform.position.x) / 2.0f;
-        Cam.position = new Vector3(Mathf.Clamp(desiredX, -CamRange, CamRange), 0, -10);
+        Cam.position = new Vector3(Mathf.Clamp(desiredX, -camRange, camRange), 0, -10);
 
+        //Update the current state the round is in
         UpdateState();
         
     }
 
+    /// <summary>
+    /// Manages the fight's state machine. Handles round transitions, keeps track of rounds won, and allows the player's to restart the round.
+    /// </summary>
     public void UpdateState()
     {
         //Update Round State
@@ -62,6 +67,7 @@ public class FightStats : MonoBehaviour
         switch (RState)
         {
             case RoundState.ROUND_START:
+                //During round start - switch to the fight state once time elapses.
                 if (GeneralTimer.TimeJustExpired)
                 {
                     GeneralTimer.SetTimer(1); //Duration of FIGHT text
@@ -71,13 +77,17 @@ public class FightStats : MonoBehaviour
                 }
                 break;
             case RoundState.GAMEPLAY:
+                //Hide the Start text after time expires
                 if (GeneralTimer.TimeJustExpired)
                     MainText.text = "";
+                //End the round once one fighter loses all their health [To Do: Also end the round once time elapses.]
                 if (P1F.Health == 0 || P2F.Health == 0)
                 {
+                    //Deactivate both fighters and set the time controlling KO text duration
                     P1F.SetControlsActive(false); P2F.SetControlsActive(false);
-                    GeneralTimer.SetTimer(3); //Duration of KO text
-                    //If both players died, double KO
+                    GeneralTimer.SetTimer(3);
+
+                    //If both players died, Resolve the Double KO
                     if (P1F.Health == 0 && P2F.Health == 0)
                     {
                         MainText.text = "DOUBLE KO";
@@ -85,26 +95,29 @@ public class FightStats : MonoBehaviour
                         if (P2Wins == 0) P2Wins++;
                         P1RoundDisp.text = "Rounds: " + P1Wins; P2RoundDisp.text = "Rounds: " + P2Wins;
                     }
-                    //If one player died, display which and update rounds
+                    //If only one player died, resolve a standard KO
                     else
                     {
                         MainText.text = "KO";
                         if (P2F.Health == 0) P1Wins++;
                         else P2Wins++;
-
                         P1RoundDisp.text = "Rounds: " + P1Wins; P2RoundDisp.text = "Rounds: " + P2Wins;
                     }
+                    //Switch to Round End State
                     RState = RoundState.ROUND_END;
                 }
                 break;
             case RoundState.ROUND_END:
-                if (GeneralTimer.TimeJustExpired) //At time elapse, check if game is over
+                // After time elapses, check if game is over
+                if (GeneralTimer.TimeJustExpired)
                 {
+                    //If either fighter has two wins, the game ends
                     if (P1Wins == 2 || P2Wins == 2)
                     {
                         MainText.text = "PLAYER " + (P1Wins == 2 ? 1 : 2) + " WINS!\nPress [SPACE] to reset.";
                         RState = RoundState.GAME_END;
                     }
+                    //Otherwise, both fighters are reset to start the next round
                     else
                     {
                         //Reset Both players
@@ -118,6 +131,7 @@ public class FightStats : MonoBehaviour
                 }
                 break;
             case RoundState.GAME_END:
+                //Once the game has end, the gameloop can be reset by pressing space
                 if (Input.GetKeyDown(KeyCode.Space))
                 {
                     //Reset Both players
@@ -134,13 +148,16 @@ public class FightStats : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Updates fighter parameters that must be handled simultaneously, such as resolving damage or seperating the fighters.
+    /// </summary>
     private void UpdatePlayers()
     {
-        //Check the fighter's relative positions
+        //Prompt each fighter to update their relative position variables, based on the other's position.
         P1F.UpdatePosition(P2.transform); P2F.UpdatePosition(P1.transform);
 
-        //if the fighters are close, seperate them
-        if (P1F.OnGround && P2F.OnGround && Mathf.Abs(P1.transform.position.x - P2.transform.position.x) < ContactLimit)
+        //if the fighters stand too close, use the seperation script to move them apart. Do so only if both are on the ground.
+        if (P1F.OnGround && P2F.OnGround && Mathf.Abs(P1.transform.position.x - P2.transform.position.x) < contactLimit)
         {
             if (P1F.IsOnRight)
                 SeperatePlayers(P2.transform, P1.transform);
@@ -148,38 +165,47 @@ public class FightStats : MonoBehaviour
                 SeperatePlayers(P1.transform, P2.transform);
         }
 
-        //Tell each fighter to check if they got hit
+        //Prompt each fighter to resolve any damage received.
         P1F.UpdateDamage(); P2F.UpdateDamage();
 
-        //CAMERA CONTROLS
-        //Lock players within camera bounds
-        P1.transform.position = new Vector2(Mathf.Clamp(P1.transform.position.x, Cam.position.x - MapEdge, Cam.position.x + MapEdge), P1.transform.position.y);
-        P2.transform.position = new Vector2(Mathf.Clamp(P2.transform.position.x, Cam.position.x - MapEdge, Cam.position.x + MapEdge), P2.transform.position.y);
+        //CAMERA CONTROLS - may move to seperate camera script eventually?
+        //Ensure players stay within the camera bounds
+        P1.transform.position = new Vector2(Mathf.Clamp(P1.transform.position.x, Cam.position.x - mapEdge, Cam.position.x + mapEdge), P1.transform.position.y);
+        P2.transform.position = new Vector2(Mathf.Clamp(P2.transform.position.x, Cam.position.x - mapEdge, Cam.position.x + mapEdge), P2.transform.position.y);
     }
 
-    //Called if the fighters are too close - moves them to their minimum allowed distance based on relative position
-    private void SeperatePlayers(Transform left, Transform right)
+    /// <summary>
+    /// Moves the two fighters apart if they are currently too close to each other.
+    /// </summary>
+    /// <param name="leftFighter">The fighter that is currently to the right of the other.</param>
+    /// <param name="rightFighter">The fighter that is currently to the left of the other.</param>
+    private void SeperatePlayers(Transform leftFighter, Transform rightFighter)
     {
         //If left fighter is close to wall, move only the right one
-        if (left.position.x <= -(CamRange + MapEdge) + 0.05f)
-            right.position = new Vector2(left.position.x + ContactLimit, right.position.y);
+        if (leftFighter.position.x <= -(camRange + mapEdge) + 0.05f)
+            rightFighter.position = new Vector2(leftFighter.position.x + contactLimit, rightFighter.position.y);
 
         //If right fighter is close to wall, move only the left one
-        else if (right.position.x >= (CamRange + MapEdge) - 0.05f)
-            left.position = new Vector2(right.position.x - ContactLimit, left.position.y);
+        else if (rightFighter.position.x >= (camRange + mapEdge) - 0.05f)
+            leftFighter.position = new Vector2(rightFighter.position.x - contactLimit, leftFighter.position.y);
 
         //Else, move both fighters
         else
         {
-            float mid = (left.position.x + right.position.x) / 2.0f;
-            left.position = new Vector2(mid - ContactLimit/2.0f, left.position.y);
-            right.position = new Vector2(mid + ContactLimit/2.0f, right.position.y);
+            float mid = (leftFighter.position.x + rightFighter.position.x) / 2.0f;
+            leftFighter.position = new Vector2(mid - contactLimit/2.0f, leftFighter.position.y);
+            rightFighter.position = new Vector2(mid + contactLimit/2.0f, rightFighter.position.y);
         }
     }
 
-    public bool FighterNearEdge(Transform T)
+    /// <summary>
+    /// Checks whether the fighter is within 0.05 Unity units of the camera boundary.
+    /// </summary>
+    /// <param name="fighterTransform">The transform of the fighter to check.</param>
+    /// <returns>A bool, which is true if the transform is close to the map edge.</returns>
+    public bool FighterNearEdge(Transform fighterTransform)
     {
-        return (Mathf.Abs(Cam.position.x - T.position.x) > MapEdge - 0.05f);
+        return (Mathf.Abs(Cam.position.x - fighterTransform.position.x) > mapEdge - 0.05f);
     }
 }
 

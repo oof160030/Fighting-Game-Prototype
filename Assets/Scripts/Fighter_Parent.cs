@@ -502,8 +502,10 @@ public class Fighter_Parent : MonoBehaviour
     /// <param name="HBoxKnockback">The vector the hitbox should apply to the OTHER player, if it hit.</param>
     public void CalculatePushback(bool facingRight, Vector3 HBoxKnockback)
     {
+        //Retain the Y velocity of the current player while applying pushback.
+        float PreservedY = RB2.velocity.y;
         //Flip the pushback force by inverting the facingRight value
-        RB2.velocity = CalculateKnockback(false, !facingRight, HBoxKnockback);
+        RB2.velocity = CalculateKnockback(false, !facingRight, HBoxKnockback) + (Vector3.up * PreservedY);
     }
     #endregion
 
