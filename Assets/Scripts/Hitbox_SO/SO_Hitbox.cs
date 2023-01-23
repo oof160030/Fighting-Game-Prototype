@@ -32,5 +32,5 @@ public class SO_Hitbox : ScriptableObject
     [Tooltip("Determines whether hitbox deals more barrier damage when blocked high or low, both, or neither.")]
     public HBox_Height HB_HighLow;
     [Tooltip("Determines which hitbox effects apply;")]
-    public Properties[] Effects;
+    public Property[] Properties;
 }

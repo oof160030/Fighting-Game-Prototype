@@ -3,37 +3,42 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public enum HBox_Height { MID, LOW, HIGH };
-public enum Properties { CRUMPLE, LAUNCH };
+public enum Property { CRUMPLE, LAUNCH };
 public class Hitbox : MonoBehaviour
 {
-    private SO_Hitbox HB_Data;
-    private bool facingRight;
-    private int OwnerID;
-    private Fighter_Parent Owner;
+    private SO_Hitbox hb_data; public SO_Hitbox HB_Data { get { return hb_data; } }
+    private bool facingRight; public bool FacingRight { get { return facingRight; } }
+    private int ownerID; public int OwnerID { get { return ownerID; } }
+    private Fighter_Parent owner;
+    private bool contacted; //Useful for hitboxes that send a response back to the owner or change properties on contact.
     
-    public void INIT(SO_Hitbox data, Fighter_Parent O, bool right)
+    /// <summary>
+    /// Sets up the basic parameters for the given hitbox, specifical the Scriptable Object reference, the direction faced, and the owner.
+    /// </summary>
+    /// <param name="data">The SO_Hitbox data to store</param>
+    /// <param name="parentFighter">Reference to the fighter that created the hitbox.</param>
+    /// <param name="right">Whether the fighter that spawned the hitbox was facing right.</param>
+    public void INIT(SO_Hitbox data, Fighter_Parent parentFighter, bool right)
     {
-        HB_Data = data;
-        Owner = O;
-        OwnerID = O.PlayerPort;
+        hb_data = data;
+        owner = parentFighter;
+        ownerID = parentFighter.playerPort;
         facingRight = right;
 
         //Set size and position
-        transform.localScale = HB_Data.size;
-        transform.localPosition = facingRight ? HB_Data.position : Vector3.Reflect(HB_Data.position, Vector3.left);
+        transform.localScale = hb_data.size;
+        transform.localPosition = facingRight ? hb_data.position : Vector3.Reflect(hb_data.position, Vector3.left);
 
         //Destroy the hitbox after the lifespan elapses
-        Destroy(gameObject, HB_Data.lifespan / 60.0f);
+        Destroy(gameObject, hb_data.lifespan / 60.0f);
+        contacted = false;
     }
 
-    //Triggered by the hurtbox after this hitbox comes in contact with it
+    /// <summary>
+    /// The behavior the hitbox should perform on contact. Can include destroying itself, or sending a method call back to the fighter that owns it.
+    /// </summary>
     public void Contact()
     {
         Destroy(gameObject);
     }
-
-    //GET methods for the hitbox data - retrieved by the hurtbox on contact
-    public SO_Hitbox hb_Data { get { return HB_Data; } }
-    public bool FacingRight { get { return facingRight; } }
-    public int ownerID { get { return OwnerID; } }
 }
