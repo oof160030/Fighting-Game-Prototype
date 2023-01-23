@@ -20,8 +20,8 @@ MonoBehaviour:
   lifespan: 20
   priority: 0
   knockback: {x: 3, y: -3, z: 0}
-  hitStop: 0
+  hitStop: 3
   hitStun: 15
   blockStun: 15
   HB_HighLow: 2
-  Effects: 
+  Properties: 

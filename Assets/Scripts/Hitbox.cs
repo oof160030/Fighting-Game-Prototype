@@ -39,6 +39,7 @@ public class Hitbox : MonoBehaviour
     /// </summary>
     public void Contact()
     {
+        contacted = true;
         Destroy(gameObject);
     }
 }

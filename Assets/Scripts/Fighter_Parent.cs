@@ -32,12 +32,16 @@ public class Fighter_Parent : MonoBehaviour
     public bool OnGround { get { return onGround; } }
     private bool landed;                        // When true, the fighter has just landed on the ground
     private bool controlsActive;                // When true, the fighter's controls are currently active
+    private bool hitstopOn;                     // When true, the fighter is currently in hitstop
+    private float hitstopTime;                  // The number of frames hitstop should last
+    private Vector3 savedVelocity;              // Used to save the fighter's velocity for certain effects, such as restoring speed after hitstop.
 
     //Universal Fighter Stats <=> Expected to be referenced by all scripts inheriting from this class
     public int maxHealth;
     private int health; public int Health { get { return health; } }
     private int superMeter; public int SuperMeter { get { return superMeter; } }
     [SerializeField] SO_HitboxList moveList;
+    [SerializeField] SO_ProjectileList projectileList;
 
     //Movement Parameters <=> Expected to be different from fighter to fighter
     [SerializeField] float walkSpeed, jumpForce, gravityForce;
@@ -223,8 +227,12 @@ public class Fighter_Parent : MonoBehaviour
             //If none of the above apply, X speed remains 0 and Y speed is preserved.
         }
 
+        //Apply the effects of gravity, but only if hitstop is off (or gravity is on)
+        if (!hitstopOn)
+            YVel -= gravityForce * Time.deltaTime;
+
         //Apply the calculated X and Y velocities, applying the force of gravity to the Y speed;
-        RB2.velocity = new Vector2(XVel, YVel - gravityForce * Time.deltaTime);
+        RB2.velocity = new Vector2(XVel, YVel);
 
         /*
         if (currentState == FighterState.IDLE)
@@ -272,15 +280,27 @@ public class Fighter_Parent : MonoBehaviour
             animController.SetTrigger("A");
         else if (pInput.B.JustPressed() && currentState == FighterState.IDLE)
             animController.SetTrigger("B");
+        else if (pInput.C.JustPressed() && currentState == FighterState.IDLE)
+            animController.SetTrigger("C");
     }
 
     /// <summary>
-    /// Checks if the fighter should recover from any harmful states, such as hitstun, air flinch/tumble, or air attack frames.
+    /// Checks if the fighter should recover from any harmful states, such as hitstun, hitstop, air flinch/tumble, or air attack frames.
     /// </summary>
     private void UpdateRecovery()
     {
+        //Reduce hitstop timer
+        if(hitstopOn)
+        {
+            hitstopTime -= Time.deltaTime;
+            if (hitstopTime <= 0)
+                ReleaseHitstop();
+        }
+
         //Update the recover timer. Store if the fighter just recoverd
-        bool JustRecovered = animController.UpdateRecoveryTimer();
+        bool JustRecovered = false;
+        if(!hitstopOn)
+            JustRecovered = animController.UpdateRecoveryTimer();
         
         switch (currentState)
         {
@@ -359,7 +379,7 @@ public class Fighter_Parent : MonoBehaviour
     }
     #endregion
 
-    #region //DAMAGE METHODS [PlayerHit; UpdateDamage; CalculateKnockback; CalculatePushback]
+    #region //DAMAGE METHODS [PlayerHit; UpdateDamage; CalculateKnockback; CalculatePushback; SetHitstop; ReleaseHitstop]
     /// <summary>
     /// When the fighter overlaps with a hitbox, stores the hitboxes data to be processed later.
     /// </summary>
@@ -384,8 +404,7 @@ public class Fighter_Parent : MonoBehaviour
         //If a hitbox has been saved
         if(Enemy_HB.LastHitbox != null)
         {
-            //TO-DO: Apply Hitstop
-
+            
             //Check if the fighter is idle, on the ground, and holding back
             bool Blocking = false;
             if (currentState == FighterState.IDLE && onGround && pInput.HoldingBack(facingRight))
@@ -471,6 +490,10 @@ public class Fighter_Parent : MonoBehaviour
                     RB2.velocity = CalculateKnockback(Enemy_HB.HasProperty(Property.LAUNCH), Enemy_HB.FacingRight, Enemy_HB.LastHitbox.knockback);
                 }
             }
+
+            //Apply Hitstop
+            SetHitstop(Enemy_HB.LastHitbox.hitStop); otherPlayer.SetHitstop(Enemy_HB.LastHitbox.hitStop);
+
             //Clear the hitbox system once done
             Enemy_HB.ClearValues();
         }
@@ -507,6 +530,39 @@ public class Fighter_Parent : MonoBehaviour
         //Flip the pushback force by inverting the facingRight value
         RB2.velocity = CalculateKnockback(false, !facingRight, HBoxKnockback) + (Vector3.up * PreservedY);
     }
+
+    /// <summary>
+    /// Sets the fighter into a hitstop state for the given duration.
+    /// </summary>
+    /// <param name="hitstopDuration">The duration, in frames, that hitstop should last.</param>
+    public void SetHitstop(int hitstopDuration)
+    {
+        if (hitstopDuration > 0)
+        {
+            hitstopTime = hitstopDuration / 60.0f;
+            savedVelocity = RB2.velocity;
+            RB2.velocity = Vector3.zero;
+            animController.SetAnimSpeed(0);
+            hitstopOn = true;
+            //Debug.Log("Hitstop Set - " + hitstopDuration);
+        }
+    }
+
+    /// <summary>
+    /// When called, the fighter is released from the effects of hitstop if they still apply.
+    /// </summary>
+    public void ReleaseHitstop()
+    {
+        if (hitstopOn)
+        {
+            hitstopTime = 0;
+            RB2.velocity = savedVelocity;
+            animController.SetAnimSpeed(1);
+            hitstopOn = false;
+            //Debug.Log("Hitstop ended");
+        }
+    }
+
     #endregion
 
     #region //ANIMATOR METHODS [Anim_StartAttack; Anim_EndAttack; Anim_Create_Hitbox (and SearchHitBoxData)]
