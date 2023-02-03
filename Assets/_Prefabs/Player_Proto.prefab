@@ -264,8 +264,9 @@ MonoBehaviour:
   playerPort: 0
   currentState: 0
   onGround: 0
-  maxHealth: 20
+  maxHealth: 100
   moveList: {fileID: 11400000, guid: 63189eca149aaf04e9c8a67c8c58222a, type: 2}
+  projectileList: {fileID: 0}
   walkSpeed: 5
   jumpForce: 18
   gravityForce: 40

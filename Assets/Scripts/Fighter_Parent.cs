@@ -73,7 +73,7 @@ public class Fighter_Parent : MonoBehaviour
         //Create the player input class, and save the player's controls (based on if it is controlled by player 1 or 2)
         if (playerPort == 1)
         {
-            pInput = new Player_Input(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Z, KeyCode.X, KeyCode.C);
+            pInput = new Player_Input(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Comma, KeyCode.Period, KeyCode.Slash);
             //pInput.AssignInputs(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Z, KeyCode.X, KeyCode.C);
             /*For debug*/ SR.color = Color.cyan;
         }
