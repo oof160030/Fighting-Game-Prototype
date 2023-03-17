@@ -9,6 +9,7 @@ public class Hitbox : MonoBehaviour
     private SO_Hitbox hb_data; public SO_Hitbox HB_Data { get { return hb_data; } }
     private bool facingRight; public bool FacingRight { get { return facingRight; } }
     private int ownerID; public int OwnerID { get { return ownerID; } }
+    private Projectile ownerProjectile; public Projectile OwnerProjectile { get { return ownerProjectile; } set { ownerProjectile = value; } }
     private Fighter_Parent owner;
     private bool contacted; //Useful for hitboxes that send a response back to the owner or change properties on contact.
     
@@ -40,6 +41,8 @@ public class Hitbox : MonoBehaviour
     public void Contact()
     {
         contacted = true;
+        if (OwnerProjectile != null)
+            OwnerProjectile.Contact();
         Destroy(gameObject);
     }
 }

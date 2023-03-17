@@ -73,7 +73,7 @@ public class Fighter_Parent : MonoBehaviour
         //Create the player input class, and save the player's controls (based on if it is controlled by player 1 or 2)
         if (playerPort == 1)
         {
-            pInput = new Player_Input(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Comma, KeyCode.Period, KeyCode.Slash);
+            pInput = new Player_Input(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Z, KeyCode.X, KeyCode.C);
             //pInput.AssignInputs(KeyCode.UpArrow, KeyCode.DownArrow, KeyCode.LeftArrow, KeyCode.RightArrow, KeyCode.Z, KeyCode.X, KeyCode.C);
             /*For debug*/ SR.color = Color.cyan;
         }
@@ -544,7 +544,7 @@ public class Fighter_Parent : MonoBehaviour
             RB2.velocity = Vector3.zero;
             animController.SetAnimSpeed(0);
             hitstopOn = true;
-            //Debug.Log("Hitstop Set - " + hitstopDuration);
+            Debug.Log("Hitstop Set - " + hitstopDuration);
         }
     }
 
@@ -559,7 +559,7 @@ public class Fighter_Parent : MonoBehaviour
             RB2.velocity = savedVelocity;
             animController.SetAnimSpeed(1);
             hitstopOn = false;
-            //Debug.Log("Hitstop ended");
+            Debug.Log("Hitstop ended");
         }
     }
 
@@ -617,6 +617,31 @@ public class Fighter_Parent : MonoBehaviour
         foreach(SO_Hitbox H in moveList.Hitbox)
         {
             if (H.Move_IDNum == move && H.Hitbox_IDNum == box)
+            {
+                value = H;
+                break;
+            }
+        }
+        return value;
+    }
+
+    public void ANIM_Create_Projectile(int projID)
+    {
+        SO_Projectile data = SearchProjectileData(projID);
+        if(data != null)
+        {
+            GameObject H = Instantiate(data.projectileObject);
+            H.transform.position = transform.position + (facingRight ? data.startPosition : Vector3.Reflect(data.startPosition, Vector3.left));
+            H.GetComponent<Projectile>().INIT(data, this, facingRight);
+        }
+    }
+
+    public SO_Projectile SearchProjectileData(int projID)
+    {
+        SO_Projectile value = null;
+        foreach (SO_Projectile H in projectileList.Projectile)
+        {
+            if (projID == H.projectileID)
             {
                 value = H;
                 break;

@@ -266,7 +266,7 @@ MonoBehaviour:
   onGround: 0
   maxHealth: 100
   moveList: {fileID: 11400000, guid: 63189eca149aaf04e9c8a67c8c58222a, type: 2}
-  projectileList: {fileID: 0}
+  projectileList: {fileID: 11400000, guid: 9f626d6adda7fa849bb1b8a8dc0942cb, type: 2}
   walkSpeed: 5
   jumpForce: 18
   gravityForce: 40

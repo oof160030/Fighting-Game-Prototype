@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d934ba8b906a0d40ac580c7c441cd51, type: 3}
+  m_Name: 01_ArrowProjectile
+  m_EditorClassIdentifier: 
+  projectileID: 0
+  projectileObject: {fileID: 6289351288349337887, guid: 5232a102fb027834ca60fd9dcec64f4d, type: 3}
+  startPosition: {x: 2.25, y: 2.9, z: 0}
+  startVelocity: {x: 0, y: 0, z: 0}
+  lifetime: 3
